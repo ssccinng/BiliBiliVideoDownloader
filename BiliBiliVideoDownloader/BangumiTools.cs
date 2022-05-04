@@ -51,6 +51,21 @@ namespace BiliBiliVideoDownloader
     //不然下载之后都是最低清晰度, 哪怕选择了80也是只有480p的分辨率!!
     public class BangumiTools
     {
+        private static string _table = "fZodR9XQDSUm21yCkr6zBqiveYah8bt4xsWpHnJE7jL5VG3guMTKNPAwcF";
+        private static Dictionary<char, int> _tableR = TableInit();
+        private static int[] _s = new int[] { 11, 10, 3, 8, 4, 6 };
+        private static long _xor = 177451812;
+        private static long _add = 8728348608;
+
+        private static Dictionary<char, int> TableInit()
+        {
+            Dictionary<char, int> res = new();
+            for (int i = 0; i < _table.Length; i++)
+            {
+                res[_table[i]] = i;
+            }
+            return res;
+        }
         private HttpClient _httpClient { get; set; }
         private HttpClient _httpClientDown { get; set; }
         public Dictionary<string, string> Header { get; set; } = new Dictionary<string, string>
@@ -59,6 +74,30 @@ namespace BiliBiliVideoDownloader
             {"Cookie", "SESSDATA=75a75cf2%2C1564669876%2Cb7c7b171" },
             {"Host", "api.bilibili.com" },
         };
+
+        public static long BVtoAV(string BV)
+        {
+            long r = 0;
+            for (int i = 0; i < 6; i++)
+            {
+                r += _tableR[BV[_s[i]]] * (long)Math.Pow( 58, i);
+            }
+            return (r - _add) ^ _xor;
+        }
+        public static string AVtoBV(string AV)
+        {
+            return AVtoBV(int.Parse(AV));
+        }
+        public static string AVtoBV(long AV)
+        {
+            AV = (AV ^ _xor) + _add;
+            char[] bv = "BV1  4 1 7  ".ToCharArray();
+            for (int i = 0; i < 6; i++)
+            {
+                bv[_s[i]] = _table[(int)(AV / (int)Math.Pow(58, i) % 58)];
+            }
+            return String.Join("", bv);
+        }
         public BangumiTools(string sessData = null)
         {   if (sessData != null)
             {
@@ -83,7 +122,8 @@ namespace BiliBiliVideoDownloader
             {
                 //Console.WriteLine(a.Groups[1].Value);
                 var data = JsonDocument.Parse(a.Groups[1].Value).RootElement;
-
+                Console.WriteLine(data);
+                string mainTitle = data.GetProperty("mediaInfo").GetProperty("activity").GetProperty("title").GetString();
                 if (downAll)
                 {
                     var epList = data.GetProperty("epList");
@@ -146,7 +186,7 @@ namespace BiliBiliVideoDownloader
 
                     Console.WriteLine($"[正在下载: ] {ep}");
                     var videoList = await GetVideoList(ep, quality);
-                    downTasks.Add(DownloadVideo(videoList, ep.LongTitle, url));
+                    downTasks.Add(DownloadVideo(videoList, mainTitle, ep.LongTitle, url));
                 }
                 foreach (var task in downTasks)
                 {
@@ -156,6 +196,46 @@ namespace BiliBiliVideoDownloader
             }
             
             return false;
+        }
+
+        public async Task<bool> DownBVAsync(string bv, Quality quality = Quality.Q720p, int p = 0)
+        {
+            long av = BVtoAV(bv);
+            string startUrl = $"https://api.bilibili.com/x/web-interface/view?aid={av}";
+            string html = await _httpClient.GetStringAsync(startUrl);
+            var data = JsonDocument.Parse(html).RootElement.GetProperty("data");
+            //Console.WriteLine(data);
+            string BVTitle = data.GetProperty("title").GetString();
+            List<Task> downTasks = new List<Task>();
+            var pages = data.GetProperty("pages");
+
+            if (p == 0)
+            {
+                for (int i = 0; i < pages.GetArrayLength(); i++)
+                {
+                    int cid = pages[i].GetProperty("cid").GetInt32();
+                    string title = pages[i].GetProperty("part").GetString();
+                    int page = pages[i].GetProperty("page").GetInt32();
+                    string startUrlTrue = $"{startUrl}/?p={page}";
+                    var videoList = await GetVideoList((int)av, cid, quality);
+                    downTasks.Add(DownloadVideo(videoList, BVTitle, title, startUrlTrue));
+                }
+            }
+            else
+            {
+                int cid = pages[p - 1].GetProperty("cid").GetInt32();
+                string title = pages[p - 1].GetProperty("part").GetString();
+                int page = pages[p - 1].GetProperty("page").GetInt32();
+                string startUrlTrue = $"{startUrl}/?p={page}";
+                var videoList = await GetVideoList((int)av, cid, quality);
+                downTasks.Add(DownloadVideo(videoList, BVTitle, title, startUrlTrue));
+            }
+            foreach (var task in downTasks)
+            {
+                await task;
+            }
+            return true;
+
         }
         public async Task<List<string>> GetVideoList(EpInfo ep, Quality qualit)
         {
@@ -182,8 +262,15 @@ namespace BiliBiliVideoDownloader
             return videoList;
         }
 
-        public async Task DownloadVideo(List<string> videoList, string title, string startUrl)
+        public async Task DownloadVideo(List<string> videoList, string maintitle, string title, string startUrl)
         {
+            maintitle = Regex.Replace(maintitle, @"[\/\\:*?""<>|]", "");
+            if (!Directory.Exists($"video/{maintitle}"))
+            {
+                Directory.CreateDirectory($"video/{maintitle}");
+            }
+            Console.WriteLine($"[正在下载: ] {maintitle} {title}");
+
             List<(string, string)> headers = new List<(string, string)> {
             ("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:56.0) Gecko/20100101 Firefox/56.0"),
             ("Accept", "*/*"),
@@ -240,11 +327,11 @@ namespace BiliBiliVideoDownloader
                 var videoData = await httpClient.GetByteArrayAsync(video);
                 if (videoList.Count > 1)
                 {
-                    File.WriteAllBytes($"{Regex.Replace(title, @"[\/\\:*?"" <>|]", "")} - {idx}.mp4", videoData);
+                    File.WriteAllBytes($"video/{maintitle}/{Regex.Replace(title, @"[\/\\:*?"" <>|]", "")} - {idx}.flv", videoData);
                 }
                 else
                 {
-                    File.WriteAllBytes($"{Regex.Replace(title, @"[\/\\:*?"" <>|]", "")} .mp4", videoData);
+                    File.WriteAllBytes($"video/{maintitle}/{Regex.Replace(title, @"[\/\\:*?"" <>|]", "")} .flv", videoData);
                 }
                 idx++;
             }
