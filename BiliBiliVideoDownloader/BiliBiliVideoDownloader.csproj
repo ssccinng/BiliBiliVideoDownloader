@@ -10,6 +10,7 @@
     <RepositoryUrl>https://github.com/ssccinng/BiliBiliVideoDownloader</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <Authors>scixing</Authors>
+    <Version>1.0.1</Version>
   </PropertyGroup>
 
   <ItemGroup>

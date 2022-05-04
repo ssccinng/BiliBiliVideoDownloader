@@ -122,8 +122,12 @@ namespace BiliBiliVideoDownloader
             {
                 //Console.WriteLine(a.Groups[1].Value);
                 var data = JsonDocument.Parse(a.Groups[1].Value).RootElement;
-                Console.WriteLine(data);
+                //Console.WriteLine(data);
                 string mainTitle = data.GetProperty("mediaInfo").GetProperty("activity").GetProperty("title").GetString();
+                if (mainTitle == "")
+                {
+                    mainTitle = data.GetProperty("h1Title").GetString();
+                }
                 if (downAll)
                 {
                     var epList = data.GetProperty("epList");
@@ -264,12 +268,14 @@ namespace BiliBiliVideoDownloader
 
         public async Task DownloadVideo(List<string> videoList, string maintitle, string title, string startUrl)
         {
+            Console.WriteLine($"[正在下载: ] {maintitle} {title}");
             maintitle = Regex.Replace(maintitle, @"[\/\\:*?""<>|]", "");
+
             if (!Directory.Exists($"video/{maintitle}"))
             {
                 Directory.CreateDirectory($"video/{maintitle}");
             }
-            Console.WriteLine($"[正在下载: ] {maintitle} {title}");
+           
 
             List<(string, string)> headers = new List<(string, string)> {
             ("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:56.0) Gecko/20100101 Firefox/56.0"),
@@ -290,49 +296,62 @@ namespace BiliBiliVideoDownloader
             int idx = 1;
             foreach (var video in videoList)
             {
-                //using (HttpResponseMessage response = httpClient.GetAsync(video, HttpCompletionOption.ResponseHeadersRead).Result)
-                //{
-                //    response.EnsureSuccessStatusCode();
-
-                //    using (Stream contentStream = await response.Content.ReadAsStreamAsync(), fileStream = new FileStream("test", FileMode.Create, FileAccess.Write, FileShare.None, 8192, true))
-                //    {
-                //        var totalRead = 0L;
-                //        var totalReads = 0L;
-                //        var buffer = new byte[8192];
-                //        var isMoreToRead = true;
-
-                //        do
-                //        {
-                //            var read = await contentStream.ReadAsync(buffer, 0, buffer.Length);
-                //            if (read == 0)
-                //            {
-                //                isMoreToRead = false;
-                //            }
-                //            else
-                //            {
-                //                await fileStream.WriteAsync(buffer, 0, read);
-
-                //                totalRead += read;
-                //                totalReads += 1;
-
-                //                if (totalReads % 2000 == 0)
-                //                {
-                //                    Console.WriteLine(string.Format("total bytes downloaded so far: {0:n0}", totalRead));
-                //                }
-                //            }
-                //        }
-                //        while (isMoreToRead);
-                //    }
-                //}
-                var videoData = await httpClient.GetByteArrayAsync(video);
+                string vtitle;
                 if (videoList.Count > 1)
                 {
-                    File.WriteAllBytes($"video/{maintitle}/{Regex.Replace(title, @"[\/\\:*?"" <>|]", "")} - {idx}.flv", videoData);
+                    vtitle = $"video/{maintitle}/{Regex.Replace(title, @"[\/\\:*?"" <>|]", "")} - {idx}.flv";
+                    //File.WriteAllBytes($"video/{maintitle}/{Regex.Replace(title, @"[\/\\:*?"" <>|]", "")} - {idx}.flv", videoData);
                 }
                 else
                 {
-                    File.WriteAllBytes($"video/{maintitle}/{Regex.Replace(title, @"[\/\\:*?"" <>|]", "")} .flv", videoData);
+                    vtitle = $"video/{maintitle}/{Regex.Replace(title, @"[\/\\:*?"" <>|]", "")} .flv";
+                    //File.WriteAllBytes($"video/{maintitle}/{Regex.Replace(title, @"[\/\\:*?"" <>|]", "")} .flv", videoData);
                 }
+                using (HttpResponseMessage response = httpClient.GetAsync(video, HttpCompletionOption.ResponseHeadersRead).Result)
+                {
+                    response.EnsureSuccessStatusCode();
+                    
+                    using (Stream contentStream = await response.Content.ReadAsStreamAsync(), fileStream = new FileStream(vtitle, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true))
+                    {
+                        var totalRead = 0L;
+                        var totalReads = 0L;
+                        var buffer = new byte[8192];
+                        var isMoreToRead = true;
+
+                        do
+                        {
+                            var read = await contentStream.ReadAsync(buffer, 0, buffer.Length);
+                            if (read == 0)
+                            {
+                                isMoreToRead = false;
+                            }
+                            else
+                            {
+                                await fileStream.WriteAsync(buffer, 0, read);
+
+                                totalRead += read;
+                                totalReads += 1;
+
+                                if (totalReads % 2000 == 0)
+                                {
+                                    double? pro = totalRead * 1.0 / response.Content.Headers.ContentLength;
+                                    Console.WriteLine($"{maintitle} {title}\t进度: {totalRead} / {response.Content.Headers.ContentLength}\t{pro:0.00%}");
+                                    //Console.WriteLine(string.Format("total bytes downloaded so far: {0:n0}", totalRead));
+                                }
+                            }
+                        }
+                        while (isMoreToRead);
+                    }
+                }
+                //var videoData = await httpClient.GetByteArrayAsync(video);
+                //if (videoList.Count > 1)
+                //{
+                //    File.WriteAllBytes($"video/{maintitle}/{Regex.Replace(title, @"[\/\\:*?"" <>|]", "")} - {idx}.flv", videoData);
+                //}
+                //else
+                //{
+                //    File.WriteAllBytes($"video/{maintitle}/{Regex.Replace(title, @"[\/\\:*?"" <>|]", "")} .flv", videoData);
+                //}
                 idx++;
             }
 
