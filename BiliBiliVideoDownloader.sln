@@ -5,7 +5,7 @@ VisualStudioVersion = 17.1.32407.343
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BiliBiliVideoDownloader", "BiliBiliVideoDownloader\BiliBiliVideoDownloader.csproj", "{87F82736-EEF8-4C6D-87D6-AEBF1D278CA3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DownloadTest", "DownloadTest\DownloadTest.csproj", "{D7D98451-2618-4AD5-B909-43048E0B8A56}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DownloadTest", "DownloadTest\DownloadTest.csproj", "{D7D98451-2618-4AD5-B909-43048E0B8A56}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DownloadDemo", "DownloadDemo\DownloadDemo.csproj", "{88632DDD-4264-4267-B000-140DEC9D218B}"
 EndProject

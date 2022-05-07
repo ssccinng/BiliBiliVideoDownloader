@@ -111,7 +111,7 @@ namespace BiliBiliVideoDownloader
             _httpClientDown.DefaultRequestHeaders.Add("Cookie", Header["Cookie"]);
             _httpClientDown.DefaultRequestHeaders.Add("Host", Header["Host"]);
         }
-        public async Task<bool> DownEpAsync(string url, bool downAll = false, Quality quality = Quality.Q720p)
+        public async Task<bool> DownEpAsync(string url, bool downAll = false, Quality quality = Quality.Q720p, int epIndex = -1)
         {
             string html = await _httpClient.GetStringAsync(url);
 
@@ -128,59 +128,88 @@ namespace BiliBiliVideoDownloader
                 {
                     mainTitle = data.GetProperty("h1Title").GetString();
                 }
-                if (downAll)
+                if (epIndex > 0)
                 {
+                    epIndex--;
                     var epList = data.GetProperty("epList");
-                    for (int i = 0; i < epList.GetArrayLength(); i++)
-                    {
-                        //Console.WriteLine(epList[i]);
-
-                        if (data.TryGetProperty("index", out var index))
-                        {
-                            epInfos.Add(new EpInfo
-                            {
-                                Aid = epList[i].GetProperty("aid").GetInt32(),
-                                Cid = epList[i].GetProperty("cid").GetInt32(),
-                                Index = index.GetInt32(),
-                                LongTitle = epList[i].GetProperty("index_title").GetString(),
-                            });;
-                        }
-                        else
-                        {
-                            epInfos.Add(new EpInfo
-                            {
-                                Aid = epList[i].GetProperty("aid").GetInt32(),
-                                Cid = epList[i].GetProperty("cid").GetInt32(),
-                                TitleFormat = epList[i].GetProperty("titleFormat").GetString(),
-                                LongTitle = epList[i].GetProperty("longTitle").GetString(),
-                            });
-                            Console.WriteLine(epInfos.Last());
-                        }
-                    }
-                }
-                else
-                {
-                    var epInfo = data.GetProperty("epInfo");
                     if (data.TryGetProperty("index", out var index))
                     {
                         epInfos.Add(new EpInfo
                         {
-                            Aid = epInfo.GetProperty("aid").GetInt32(),
-                            Cid = epInfo.GetProperty("cid").GetInt32(),
+                            Aid = epList[epIndex].GetProperty("aid").GetInt32(),
+                            Cid = epList[epIndex].GetProperty("cid").GetInt32(),
                             Index = index.GetInt32(),
-                            LongTitle = epInfo.GetProperty("index_title").GetString(),
+                            LongTitle = epList[epIndex].GetProperty("index_title").GetString(),
                         }); ;
                     }
                     else
                     {
                         epInfos.Add(new EpInfo
                         {
-                            Aid = epInfo.GetProperty("aid").GetInt32(),
-                            Cid = epInfo.GetProperty("cid").GetInt32(),
-                            TitleFormat = epInfo.GetProperty("titleFormat").GetString(),
-                            LongTitle = epInfo.GetProperty("longTitle").GetString(),
+                            Aid = epList[epIndex].GetProperty("aid").GetInt32(),
+                            Cid = epList[epIndex].GetProperty("cid").GetInt32(),
+                            TitleFormat = epList[epIndex].GetProperty("titleFormat").GetString(),
+                            LongTitle = epList[epIndex].GetProperty("longTitle").GetString(),
                         });
                         Console.WriteLine(epInfos.Last());
+                    }
+                }
+                else
+                {
+                    if (downAll)
+                    {
+                        var epList = data.GetProperty("epList");
+                        for (int i = 0; i < epList.GetArrayLength(); i++)
+                        {
+                            //Console.WriteLine(epList[i]);
+
+                            if (data.TryGetProperty("index", out var index))
+                            {
+                                epInfos.Add(new EpInfo
+                                {
+                                    Aid = epList[i].GetProperty("aid").GetInt32(),
+                                    Cid = epList[i].GetProperty("cid").GetInt32(),
+                                    Index = index.GetInt32(),
+                                    LongTitle = epList[i].GetProperty("index_title").GetString(),
+                                });;
+                            }
+                            else
+                            {
+                                epInfos.Add(new EpInfo
+                                {
+                                    Aid = epList[i].GetProperty("aid").GetInt32(),
+                                    Cid = epList[i].GetProperty("cid").GetInt32(),
+                                    TitleFormat = epList[i].GetProperty("titleFormat").GetString(),
+                                    LongTitle = epList[i].GetProperty("longTitle").GetString(),
+                                });
+                                Console.WriteLine(epInfos.Last());
+                            }
+                        }
+                    }
+                    else
+                    {
+                        var epInfo = data.GetProperty("epInfo");
+                        if (data.TryGetProperty("index", out var index))
+                        {
+                            epInfos.Add(new EpInfo
+                            {
+                                Aid = epInfo.GetProperty("aid").GetInt32(),
+                                Cid = epInfo.GetProperty("cid").GetInt32(),
+                                Index = index.GetInt32(),
+                                LongTitle = epInfo.GetProperty("index_title").GetString(),
+                            }); ;
+                        }
+                        else
+                        {
+                            epInfos.Add(new EpInfo
+                            {
+                                Aid = epInfo.GetProperty("aid").GetInt32(),
+                                Cid = epInfo.GetProperty("cid").GetInt32(),
+                                TitleFormat = epInfo.GetProperty("titleFormat").GetString(),
+                                LongTitle = epInfo.GetProperty("longTitle").GetString(),
+                            });
+                            Console.WriteLine(epInfos.Last());
+                        }
                     }
                 }
 
