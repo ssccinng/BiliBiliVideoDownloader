@@ -270,9 +270,9 @@ namespace BiliBiliVideoDownloader
             return true;
 
         }
-        public async Task<List<string>> GetVideoList(EpInfo ep, Quality qualit)
+        public async Task<List<string>> GetVideoList(EpInfo ep, Quality quality)
         {
-            return await GetVideoList(ep.Aid, ep.Cid, qualit);
+            return await GetVideoList(ep.Aid, ep.Cid, quality);
         }
         public async Task<List<string>> GetVideoList(int aid, int cid, Quality quality)
         {

@@ -150,8 +150,9 @@ namespace BiliBiliCore
             }
         }
 
-        public async Task DownloadAsync()
+        public async Task DownloadAsync(Range? range = null)
         {
+            range ??= ..;
             for (int i = 0; i < Eps.Count; i++)
             {
                 int idx = 1;
@@ -167,12 +168,33 @@ namespace BiliBiliCore
                 {
                     Directory.CreateDirectory(@$"manga\{Title}\{i + 1}.{title}");
                 }
+                //Parallel.For(0, mcimgs.Count, async j =>
+                //{
+                //    int ii = i + 1;
+                //    var img = await _httpClient.GetAsync(mcimgs[j]);
+                //    File.WriteAllBytes(@$"manga\{Title}\{ii}.{title}\{epid}_{j + 1}.jpg", await img.Content.ReadAsByteArrayAsync());
+                //    Console.WriteLine(mcimgs[j]);
+                //});
+                List<Task> tasks = new();
+                // 限制task最大并发
+
                 foreach (var pic in mcimgs)
                 {
-                    var img = await _httpClient.GetAsync(pic);
-                    File.WriteAllBytes(@$"manga\{Title}\{i + 1}.{title}\{epid}_{idx++}.jpg", await img.Content.ReadAsByteArrayAsync());
+                    int ii = idx;
+                    tasks.Add(Task.Run(async () =>
+                    {
+                        var img = await _httpClient.GetAsync(pic);
+                        File.WriteAllBytes(@$"manga\{Title}\{i + 1}.{title}\{epid}_{ii}.jpg", await img.Content.ReadAsByteArrayAsync());
+                    }));
+                    idx++;
+                    if (tasks.Count >= 5)
+                    {
+                        Task.WaitAll(tasks.ToArray());
+                        tasks.Clear();
+                    }
                     Console.WriteLine(pic);
                 }
+                Task.WaitAll(tasks.ToArray());
             }
             return;
         }
